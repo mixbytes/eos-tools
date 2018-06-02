@@ -1,61 +1,45 @@
-const Eos = require('eosjs');
-const argparse = require("argparse");
+const common = require('./common');
 const axios = require('axios');
+const Eos = require('eosjs');
 
-let parser = new argparse.ArgumentParser({
-    version: '0.0.1',
-    addHelp: true,
-    description: 'EOS staking tool'
-});
+common.run({name: 'EOS stake tool', version: '0.0.2'})
+    .then(async (app) => {
 
-parser.addArgument(['--url', '-u'], {
-    defaultValue: 'http://127.0.0.1:8888', description: 'url to EOS node'
-});
+        let params = app.parseArgs([
+            {name: ['--url', '-u'], opts: {required: true, description: 'url to EOS node'}},
+            {name: ['--name', '-n'], opts: {required: true, description: 'name of voter account'}},
+            {name: ['--net'], opts: {required: true, description: 'stake for net'}},
+            {name: ['--cpu'], opts: {required: true, description: 'stake for cpu'}},
+        ]);
 
-parser.addArgument(['--key', '-k'], {
-    required: true, description: 'private key'
-});
+        params.key = await app.stdinQuestion('Enter private key for ' + params.name + '\n');
 
-parser.addArgument(['--name', '-n'], {
-    required: true, description: 'name of voter account'
-});
-
-parser.addArgument(['--net'], {
-    required: true, description: 'stake for net'
-});
-
-parser.addArgument(['--cpu'], {
-    required: true, description: 'stake for cpu'
-});
-
-let args = parser.parseArgs();
-
-
-axios.get(args.url+'/v1/chain/get_info')
-    .then(resp => {
-        if (resp.status !== 200)
+        let getInfoResp = await axios.get(params.url+'/v1/chain/get_info');
+        if (getInfoResp.status !== 200)
             return console.log('get_info error');
 
         let eos = Eos({
-            chainId: resp.data.chain_id,
-            keyProvider: args.key,
-            httpEndpoint: args.url,
+            chainId: getInfoResp.data.chain_id,
+            keyProvider: params.key,
+            httpEndpoint: params.url,
         });
 
-        eos.transaction('eosio', (system) => {
-            system.delegatebw({
-                'from': args.name,
-                'receiver': args.name,
-                'stake_net_quantity': args.net,
-                'stake_cpu_quantity': args.cpu,
-                'transfer': 0
+        try {
+            let trx = await eos.transaction('eosio', (system) => {
+                system.delegatebw({
+                    'from': params.name,
+                    'receiver': params.name,
+                    'stake_net_quantity': params.net,
+                    'stake_cpu_quantity': params.cpu,
+                    'transfer': 0
+                });
             });
-        }).then(res => {
+
             console.log("OK staked");
-            console.log(res);
-        }).catch(e => {
+            console.log(trx);
+        }
+        catch (e) {
             console.log("Fail");
             console.log(e);
-        });
-    })
-    .catch(console.error);
+        }
+    });

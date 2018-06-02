@@ -1,55 +1,42 @@
-const Eos = require('eosjs');
-const argparse = require("argparse");
+const common = require('./common');
 const axios = require('axios');
+const Eos = require('eosjs');
 
-let parser = new argparse.ArgumentParser({
-    version: '0.0.1',
-    addHelp: true,
-    description: 'EOS voting tool'
-});
+common.run({name: 'EOS voting tool', version: '0.0.2'})
+    .then(async (app) => {
 
-parser.addArgument(['--url', '-u'], {
-    defaultValue: 'http://127.0.0.1:8888', description: 'url to EOS node'
-});
+        let params = app.parseArgs([
+            {name: ['--url', '-u'], opts: {required: true, description: 'url to EOS node'}},
+            {name: ['--name', '-n'], opts: {required: true, description: 'name of voter account'}},
+            {name: ['--target', '-t'], opts: {required: true, description: 'target account name'}},
+        ]);
 
-parser.addArgument(['--key', '-k'], {
-    required: true, description: 'private key'
-});
+        params.key = await app.stdinQuestion('Enter private key for ' + params.name + '\n');
 
-parser.addArgument(['--name', '-n'], {
-    required: true, description: 'name of voter account'
-});
-
-parser.addArgument(['--target', '-t'], {
-    required: true, description: 'target name'
-});
-
-let args = parser.parseArgs();
-
-
-axios.get(args.url+'/v1/chain/get_info')
-    .then(resp => {
-        if (resp.status !== 200)
+        let getInfoResp = await axios.get(params.url+'/v1/chain/get_info');
+        if (getInfoResp.status !== 200)
             return console.log('get_info error');
 
         let eos = Eos({
-            chainId: resp.data.chain_id,
-            keyProvider: args.key,
-            httpEndpoint: args.url,
+            chainId: getInfoResp.data.chain_id,
+            keyProvider: params.key,
+            httpEndpoint: params.url,
         });
 
-        eos.transaction('eosio', (system) => {
-            system.voteproducer({
-                'voter': args.name,
-                'proxy': '',
-                'producers': [args.target]
+        try {
+            let trx = await eos.transaction('eosio', (system) => {
+                system.voteproducer({
+                    'voter': params.name,
+                    'proxy': '',
+                    'producers': [params.target]
+                });
             });
-        }).then(res => {
-            console.log("OK voted");
-            console.log(res);
-        }).catch(e => {
+
+            console.log("OK staked");
+            console.log(trx);
+        }
+        catch (e) {
             console.log("Fail");
             console.log(e);
-        });
-    })
-    .catch(console.error);
+        }
+    });

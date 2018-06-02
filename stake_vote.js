@@ -28,8 +28,9 @@ common.run({name: 'EOS auto stake and vote tool', version: '0.0.2'})
         if (!eosBalance)
             return console.log('EOS tokens not found, WTF!?!?');
 
-        eosBalance = parseFloat(eosBalance.split('0')[0]);
-        let forStake = Eos.modules.format.UDecimalPad(eosBalance / 2, 4) + ' EOS';
+        let eosBalanceParsed = parseFloat(eosBalance.split('.')[0]);
+        console.log('Account balance: ' + eosBalance);
+        let forStake = Eos.modules.format.UDecimalPad(eosBalanceParsed / 2, 4) + ' EOS';
 
         try {
             let trx = await eos.transaction('eosio', (system) => {
@@ -47,7 +48,7 @@ common.run({name: 'EOS auto stake and vote tool', version: '0.0.2'})
                 });
             });
 
-            console.log("OK voted: " + forStake);
+            console.log("OK voted: " + eosBalance);
             console.log(trx);
         }
         catch (e) {

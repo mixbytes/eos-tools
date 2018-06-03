@@ -25,22 +25,30 @@ common.run({name: 'EOS auto stake and vote tool', version: '0.0.2'})
 
         let balance = await eos.getCurrencyBalance('eosio.token', params.name);
         let eosBalance = balance.find(b => b.endsWith('EOS'));
-        if (!eosBalance)
-            return console.log('EOS tokens not found, WTF!?!?');
+        let forStake
+        if (eosBalance) {
+            let eosBalanceParsed = parseFloat(eosBalance.split('.')[0])
+            console.log('Account balance: ' + eosBalance)
+            forStake = Eos.modules.format.UDecimalPad(eosBalanceParsed / 2, 4) + ' EOS'
+        } else {
+            console.log('EOS tokens not found')
+        }
 
-        let eosBalanceParsed = parseFloat(eosBalance.split('.')[0]);
-        console.log('Account balance: ' + eosBalance);
-        let forStake = Eos.modules.format.UDecimalPad(eosBalanceParsed / 2, 4) + ' EOS';
+
 
         try {
             let trx = await eos.transaction('eosio', (system) => {
-                system.delegatebw({
-                    'from': params.name,
-                    'receiver': params.name,
-                    'stake_net_quantity': forStake,
-                    'stake_cpu_quantity': forStake,
-                    'transfer': 0
-                });
+
+                if (forStake) {
+                    system.delegatebw({
+                        'from': params.name,
+                        'receiver': params.name,
+                        'stake_net_quantity': forStake,
+                        'stake_cpu_quantity': forStake,
+                        'transfer': 0
+                    });
+                }
+
                 system.voteproducer({
                     'voter': params.name,
                     'proxy': '',

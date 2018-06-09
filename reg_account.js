@@ -2,10 +2,6 @@ const common = require('./common');
 const axios = require('axios');
 const Eos = require('eosjs');
 
-console.log("DISABLED NAX - temp commit")
-process.exit();
-
-
 common.run({name: 'Create account', version: '0.0.1'})
     .then(async (app) => {
 
@@ -13,8 +9,7 @@ common.run({name: 'Create account', version: '0.0.1'})
             {name: ['--url', '-u'], opts: {required: true, description: 'url to EOS node'}},
             {name: ['--owner', '-o'], opts: {required: true, description: 'name of account owner, who creates new account. "eosio" for init configuration'}},
             {name: ['--name', '-a'], opts: {required: true, description: 'name of new account'}},
-//            {name: ['--net'], opts: {required: true, description: 'stake for net'}},
-//            {name: ['--cpu'], opts: {required: true, description: 'stake for cpu'}},
+            {name: ['--pubkey', '-p'], opts: {required: true, description: 'Public key of owner'}},
         ]);
 
         params.key = await app.stdinQuestion('Enter private key for ' + params.owner + '\n');
@@ -33,9 +28,11 @@ common.run({name: 'Create account', version: '0.0.1'})
         try {
             let trx = await eos.transaction('eosio', (system) => {
    				system.newaccount({
-    				creator: params.owner,
-    				name: params.name
-  				})
+    					creator: params.owner,
+    					name: params.name,
+					owner: params.pubkey,
+					active: params.pubkey,
+				});
             });
 
             console.log("Account created, tx: ");
